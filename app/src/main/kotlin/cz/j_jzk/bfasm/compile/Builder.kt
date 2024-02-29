@@ -1,12 +1,19 @@
 package cz.j_jzk.bfasm.compile
 
 import java.io.File
+import com.github.ajalt.mordant.terminal.Terminal
+
+class BuilderException(val errorCode: Int): Exception() {
+	override fun toString() = "Subcommand failed with code $errorCode"
+}
 
 class Builder(val buildDir: File, val tapeLength: Int) {
 	private val ASM_SOURCE_NAME = "program.asm"
 	private val ASM_OBJECT_NAME = "program.o"
 	private val C_SOURCE_NAME = "main.c"
 	private val BINARY_NAME = "main"
+
+	private val printer = Terminal()
 
 	init {
 		buildDir.mkdir()
@@ -31,21 +38,31 @@ class Builder(val buildDir: File, val tapeLength: Int) {
 	}
 
 	private fun buildAsm() {
-		ProcessBuilder("nasm -f elf64 -Fdwarf $ASM_SOURCE_NAME".split(" "))
+		printer.muted("nasm -f elf64 -Fdwarf $ASM_SOURCE_NAME", stderr=true)
+		
+		val returnCode = ProcessBuilder("nasm -f elf64 -Fdwarf $ASM_SOURCE_NAME".split(" "))
 			.redirectOutput(ProcessBuilder.Redirect.INHERIT)
 			.redirectError(ProcessBuilder.Redirect.INHERIT)
 			.directory(buildDir)
 			.start()
 			.waitFor()
+
+		if (returnCode != 0)
+			throw BuilderException(returnCode)
 	}
 
 	private fun buildMain() {
-		ProcessBuilder("gcc -no-pie $ASM_OBJECT_NAME $C_SOURCE_NAME -o $BINARY_NAME".split(" "))
+		printer.muted("gcc -no-pie $ASM_OBJECT_NAME $C_SOURCE_NAME -o $BINARY_NAME", stderr=true)
+
+		val returnCode = ProcessBuilder("gcc -no-pie $ASM_OBJECT_NAME $C_SOURCE_NAME -o $BINARY_NAME".split(" "))
 			.redirectOutput(ProcessBuilder.Redirect.INHERIT)
 			.redirectError(ProcessBuilder.Redirect.INHERIT)
 			.directory(buildDir)
 			.start()
 			.waitFor()
+
+		if (returnCode != 0)
+			throw BuilderException(returnCode)
 	}
 
 	fun writeFiles(asmSource: String) {

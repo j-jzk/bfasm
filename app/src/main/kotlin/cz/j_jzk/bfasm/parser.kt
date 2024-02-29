@@ -3,6 +3,7 @@ package cz.j_jzk.bfasm
 import cz.j_jzk.klang.lesana.lesana
 import cz.j_jzk.klang.parse.NodeID
 import cz.j_jzk.klang.prales.useful.list
+import com.github.ajalt.mordant.terminal.Terminal
 
 /**
  * A brainfuck program command/statement.
@@ -47,4 +48,8 @@ val bfParser = lesana<List<BfStatement>> {
     val top = NodeID<List<BfStatement>>()
     top to def(commandList) { it.v1 }
     setTopNode(top)
+
+    onUnexpectedToken { err ->
+        Terminal().danger("${err.got.position.inputId}: character ${err.got.position.character}: $err")
+    }
 }.getLesana()
