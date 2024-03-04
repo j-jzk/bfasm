@@ -8,6 +8,7 @@ import cz.j_jzk.bfasm.compile.BuilderException
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
@@ -23,6 +24,7 @@ class MainCommand: CliktCommand() {
             .default(File("."))
 
     val tapeLength: Int by option("-t", "--tape-size", help="the nuber of tape cells to allocate").int().default(256)
+    val noBuild: Boolean by option("-n", "--no-build", help="only generate ASM & C source files, don't build them").flag()
 
     override fun run() {
         val printer = Terminal()
@@ -40,8 +42,10 @@ class MainCommand: CliktCommand() {
         try {
             val b = Builder(buildDir, tapeLength)
             b.writeFiles(assembly)
-            printer.info("Building the binary", stderr=true)
-            b.build()
+            if (!noBuild) {
+                printer.info("Building the binary", stderr=true)
+                b.build()
+            }
         } catch (e: BuilderException) {
             printer.danger(e.toString(), stderr=true)
             exitProcess(2)
