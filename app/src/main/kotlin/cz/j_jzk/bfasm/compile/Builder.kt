@@ -7,7 +7,7 @@ class BuilderException(val errorCode: Int): Exception() {
 	override fun toString() = "Subcommand failed with code $errorCode"
 }
 
-class Builder(val buildDir: File, val tapeLength: Int) {
+class Builder(val buildDir: File, val tapeLength: Int, val dynamicTape: Boolean) {
 	private val ASM_SOURCE_NAME = "program.asm"
 	private val ASM_OBJECT_NAME = "program.o"
 	private val C_SOURCE_NAME = "main.c"
@@ -21,14 +21,31 @@ class Builder(val buildDir: File, val tapeLength: Int) {
 
 	/** Generates a C runtime file */
 	private fun writeC() {
-		val source = """
-			unsigned char tape[$tapeLength] = {0};
-			extern void bf_main(void);
+		val source =
+			if (!dynamicTape)
+				"""
+				unsigned char tape[$tapeLength] = {0};
+				extern void bf_main(void);
 
-			int main() {
-				bf_main();
-				return 0;
-			}""".trimIndent()
+				int main() {
+					bf_main();
+					return 0;
+				}""".trimIndent()
+			else
+				"""
+				#include <stdlib.h>
+				#include <string.h>
+				unsigned char *tape = NULL;
+				extern void bf_main(void);
+
+				int main() {
+					tape = (unsigned char *)malloc($tapeLength);
+					if (tape == NULL) return 1;
+					memset(tape, 0, $tapeLength);
+					bf_main();
+					return 0;
+				}
+				""".trimIndent()
 
 		File(buildDir, C_SOURCE_NAME).writeText(source)
 	}
