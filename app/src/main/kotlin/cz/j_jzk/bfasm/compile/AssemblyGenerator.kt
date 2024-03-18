@@ -2,7 +2,7 @@ package cz.j_jzk.bfasm.compile
 
 import cz.j_jzk.bfasm.BfStatement
 
-class AssemblyGenerator {
+class AssemblyGenerator(val dynamicTape: Boolean) {
     private val header = """
     bits 64
     section .data
@@ -15,10 +15,14 @@ class AssemblyGenerator {
     global bf_main
 bf_main:
     enter 0,0
+    push rbx
+    push r12
     mov rbx, 0
+    mov r12, ${if (dynamicTape) "[tape]" else "tape"}
 """
-    // TODO: restore rbx value?
     private val footer = """
+    pop r12
+    pop rbx
     leave
     ret
 """
@@ -33,14 +37,14 @@ bf_main:
         when (statement) {
             is BfStatement.Right -> "    add rbx, ${statement.count}\n"
             is BfStatement.Left -> "    sub rbx, ${statement.count}\n"
-            is BfStatement.Incr -> "    add byte [tape + rbx], ${statement.count}\n"
-            is BfStatement.Decr -> "    sub byte [tape + rbx], ${statement.count}\n"
+            is BfStatement.Incr -> "    add byte [r12 + rbx], ${statement.count}\n"
+            is BfStatement.Decr -> "    sub byte [r12 + rbx], ${statement.count}\n"
             is BfStatement.Read ->
 """    call getchar
-    mov [tape + rbx], al
+    mov [r12 + rbx], al
 """
             is BfStatement.Print ->
-"""    mov dil, [tape + rbx]
+"""    mov dil, [r12 + rbx]
     call putchar
 """
             is BfStatement.Loop -> genLoop(statement)
@@ -55,7 +59,7 @@ bf_main:
 
         val result = StringBuilder()
         result.appendLine("${beginLbl}:")
-        result.appendLine("    cmp byte [tape + rbx], 0")
+        result.appendLine("    cmp byte [r12 + rbx], 0")
         result.appendLine("    je ${endLbl}")
         result.append(genList(loop.children))
         result.appendLine("    jmp ${beginLbl}")

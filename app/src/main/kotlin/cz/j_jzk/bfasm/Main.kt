@@ -19,11 +19,13 @@ import kotlin.system.exitProcess
 class MainCommand: CliktCommand() {
     val inputFile: File by argument().file(mustExist=true, canBeDir=false, mustBeReadable=true)
     val buildDir: File
-        by option("-d", "--build-dir", help="directory for the generated files")
+        by option("-d", "--build-dir", help="directory for the generated files (default .)")
             .file(canBeFile=false, canBeDir=true)
             .default(File("."))
 
-    val tapeLength: Int by option("-t", "--tape-size", help="the nuber of tape cells to allocate").int().default(256)
+    val tapeLength: Int by option("-t", "--tape-size", help="the nuber of tape cells to allocate (default 256)").int().default(256)
+    val dynamicTape: Boolean by option("--dynamic-tape", help="allocate the tape on the heap").flag()
+
     val noBuild: Boolean by option("-n", "--no-build", help="only generate ASM & C source files, don't build them").flag()
 
     override fun run() {
@@ -37,10 +39,10 @@ class MainCommand: CliktCommand() {
             printer.danger("Syntax error", stderr=true)
             exitProcess(1)
         }
-        val assembly = AssemblyGenerator().genProgram(parsed)
+        val assembly = AssemblyGenerator(dynamicTape).genProgram(parsed)
 
         try {
-            val b = Builder(buildDir, tapeLength)
+            val b = Builder(buildDir, tapeLength, dynamicTape)
             b.writeFiles(assembly)
             if (!noBuild) {
                 printer.info("Building the binary", stderr=true)
