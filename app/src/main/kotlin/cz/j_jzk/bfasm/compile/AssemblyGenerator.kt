@@ -28,17 +28,24 @@ bf_main:
 """
 
     /*
-    * The tape pointer is stored in RBX.
+    * The tape pointer is stored in RBX and the tape itself in R12
+    * (TODO: check if using only one pointer is faster)
     */
 
     // TODO: use StringBuilders more effectively (ideally use just one)
 
+    private fun addOrInc(dest: String, count: Int, add: String = "add", inc: String = "inc"): String =
+        if (count == 1)
+            "    $inc $dest\n"
+        else
+            "    $add $dest, $count\n"
+
     private fun genStatement(statement: BfStatement): String =
         when (statement) {
-            is BfStatement.Right -> "    add rbx, ${statement.count}\n"
-            is BfStatement.Left -> "    sub rbx, ${statement.count}\n"
-            is BfStatement.Incr -> "    add byte [r12 + rbx], ${statement.count}\n"
-            is BfStatement.Decr -> "    sub byte [r12 + rbx], ${statement.count}\n"
+            is BfStatement.Right -> addOrInc("rbx", statement.count)
+            is BfStatement.Left -> addOrInc("rbx", statement.count, "sub", "dec")
+            is BfStatement.Incr -> addOrInc("byte [r12 + rbx]", statement.count)
+            is BfStatement.Decr -> addOrInc("byte [r12 + rbx]", statement.count, "sub", "dec")
             is BfStatement.Read ->
 """    call getchar
     mov [r12 + rbx], al
